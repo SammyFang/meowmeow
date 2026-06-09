@@ -122,8 +122,13 @@ h2 {
   align-items: stretch;
 }
 
+.listen-panel {
+  grid-row: span 2;
+}
+
 .listen-panel,
 .context-panel,
+.visual-panel,
 .result-card,
 .event-log {
   border: 1px solid var(--line);
@@ -134,6 +139,7 @@ h2 {
 
 .listen-panel,
 .context-panel,
+.visual-panel,
 .event-log {
   padding: 18px;
 }
@@ -232,6 +238,12 @@ button:disabled {
 }
 
 .context-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.visual-panel {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -362,6 +374,44 @@ textarea:focus {
   font-weight: 760;
 }
 
+.image-drop {
+  display: grid;
+  place-items: center;
+  min-height: 198px;
+  border: 1px dashed #bfd5ce;
+  border-radius: var(--radius);
+  background: #fbfdfc;
+  color: var(--muted);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: center;
+}
+
+.image-drop input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.image-drop img {
+  width: 100%;
+  height: 100%;
+  max-height: 260px;
+  object-fit: cover;
+}
+
+.image-drop span {
+  padding: 18px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.compact-controls {
+  margin-top: 0;
+}
+
 #logOutput {
   height: 190px;
   margin: 0;
@@ -391,6 +441,10 @@ textarea:focus {
     grid-template-columns: 1fr;
   }
 
+  .listen-panel {
+    grid-row: auto;
+  }
+
   .status-grid {
     grid-template-columns: 1fr;
   }
@@ -405,7 +459,7 @@ textarea:focus {
     flex-direction: column;
   }
 
-  .connection-pill {
+  .connection-text {
     width: 100%;
   }
 
@@ -420,6 +474,7 @@ textarea:focus {
 
   .listen-panel,
   .context-panel,
+  .visual-panel,
   .event-log,
   .result-card {
     padding: 14px;

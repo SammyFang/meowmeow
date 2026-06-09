@@ -9,7 +9,8 @@
     "not_found_handling": "single-page-application"
   },
   "vars": {
-    "OPENAI_REALTIME_MODEL": "gpt-realtime-2"
+    "OPENAI_REALTIME_MODEL": "gpt-realtime-2",
+    "OPENAI_VISION_MODEL": "gpt-5.5"
   },
   "observability": {
     "enabled": true,

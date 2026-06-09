@@ -19,6 +19,11 @@ const els = {
   startButton: document.querySelector("#startButton"),
   analyzeButton: document.querySelector("#analyzeButton"),
   stopButton: document.querySelector("#stopButton"),
+  imageInput: document.querySelector("#imageInput"),
+  imagePreview: document.querySelector("#imagePreview"),
+  imageHint: document.querySelector("#imageHint"),
+  analyzeImageButton: document.querySelector("#analyzeImageButton"),
+  clearImageButton: document.querySelector("#clearImageButton"),
   realtimeStatus: document.querySelector("#realtimeStatus"),
   modelStatus: document.querySelector("#modelStatus"),
   locationInput: document.querySelector("#locationInput"),
@@ -39,6 +44,9 @@ const els = {
 els.startButton.addEventListener("click", startListening);
 els.stopButton.addEventListener("click", stopListening);
 els.analyzeButton.addEventListener("click", () => requestAnalysis("manual"));
+els.imageInput.addEventListener("change", handleImageSelected);
+els.analyzeImageButton.addEventListener("click", analyzeImage);
+els.clearImageButton.addEventListener("click", clearImage);
 els.clearLogButton.addEventListener("click", () => {
   els.logOutput.textContent = "";
   els.lastEvent.textContent = "Log cleared";
@@ -120,13 +128,16 @@ async function startListening() {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
+    setStatus("取得短效 token");
+    const ephemeralKey = await getRealtimeToken();
+
     setStatus("建立 session");
-    const sdpResponse = await fetch("/api/realtime/session", {
+    const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
       method: "POST",
       body: offer.sdp,
       headers: {
-        "Content-Type": "application/sdp",
-        "X-CatSense-Context": encodeContextHeader(getContext())
+        Authorization: `Bearer ${ephemeralKey}`,
+        "Content-Type": "application/sdp"
       }
     });
 
@@ -199,6 +210,24 @@ function requestAnalysis(source) {
     })
   );
   log(`client.response.create ${source}`);
+}
+
+async function getRealtimeToken() {
+  const response = await fetch("/api/realtime/token", {
+    method: "POST",
+    headers: {
+      "X-CatSense-Context": encodeContextHeader(getContext())
+    }
+  });
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data.detail || data.error || `Token failed: ${response.status}`);
+  }
+  const value = data.value || data.client_secret?.value;
+  if (!value) {
+    throw new Error("Realtime token response did not include a client secret.");
+  }
+  return value;
 }
 
 function sendContextMessage() {
@@ -281,6 +310,105 @@ function maybeRenderResult(text, final = false) {
   const warning = Boolean(parsed.vet_warning);
   els.suggestedResponse.textContent = parsed.suggested_response || parsed.notes || "結果不取代獸醫診斷。";
   els.suggestedResponse.classList.toggle("warning", warning);
+}
+
+async function handleImageSelected() {
+  const file = els.imageInput.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    log("ERROR selected file is not an image");
+    return;
+  }
+
+  const dataUrl = await resizeImageToDataUrl(file, 1280, 0.82);
+  els.imagePreview.src = dataUrl;
+  els.imagePreview.hidden = false;
+  els.imageHint.hidden = true;
+  els.analyzeImageButton.disabled = false;
+  els.clearImageButton.disabled = false;
+}
+
+async function analyzeImage() {
+  const imageDataUrl = els.imagePreview.src;
+  if (!imageDataUrl) return;
+
+  els.analyzeImageButton.disabled = true;
+  els.analyzeImageButton.textContent = "Analyzing...";
+  try {
+    const response = await fetch("/api/vision/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        image_data_url: imageDataUrl,
+        context: getContext()
+      })
+    });
+    const data = await safeJson(response);
+    if (!response.ok) {
+      throw new Error(data.detail || data.error || `Vision failed: ${response.status}`);
+    }
+    renderVisionResult(data);
+    log("vision.analysis.done");
+  } catch (error) {
+    log(`ERROR ${error.message}`);
+    els.evidenceRow.textContent = error.message;
+  } finally {
+    els.analyzeImageButton.disabled = false;
+    els.analyzeImageButton.textContent = "Analyze image";
+  }
+}
+
+function renderVisionResult(data) {
+  const confidence = Number(data.confidence || 0);
+  const normalizedConfidence = confidence > 1 ? Math.min(confidence, 100) : Math.round(confidence * 100);
+  const title = data.primary_state || data.relationship || "unknown";
+  els.intentLabel.textContent = `影像：${title}`;
+  els.soundType.textContent = `cats: ${data.cat_count ?? "unknown"}`;
+  els.confidenceText.textContent = `confidence: ${normalizedConfidence}%`;
+  els.confidenceFill.style.width = `${Math.max(0, Math.min(normalizedConfidence, 100))}%`;
+  els.evidenceRow.textContent = data.visible_evidence || "無足夠影像證據";
+
+  const checks = Array.isArray(data.what_to_check) && data.what_to_check.length
+    ? data.what_to_check
+    : ["換一張更清楚、包含全身與尾巴/耳朵的照片"];
+  els.checkList.replaceChildren(...checks.map(item => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    return li;
+  }));
+
+  const warning = Boolean(data.safety_warning);
+  els.suggestedResponse.textContent = data.suggested_response || "影像判斷不取代獸醫或行為專家。";
+  els.suggestedResponse.classList.toggle("warning", warning);
+}
+
+function clearImage() {
+  els.imageInput.value = "";
+  els.imagePreview.removeAttribute("src");
+  els.imagePreview.hidden = true;
+  els.imageHint.hidden = false;
+  els.analyzeImageButton.disabled = true;
+  els.clearImageButton.disabled = true;
+}
+
+function resizeImageToDataUrl(file, maxEdge, quality) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const ctx = canvas.getContext("2d", { alpha: false });
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(image.src);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    image.onerror = () => reject(new Error("Could not read image."));
+    image.src = URL.createObjectURL(file);
+  });
 }
 
 function extractResponseText(event) {

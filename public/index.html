@@ -45,6 +45,26 @@
           </div>
         </section>
 
+        <section class="visual-panel">
+          <div class="panel-header compact">
+            <div>
+              <h2>Visual Check</h2>
+              <p>姿態、壓力、貓與貓關係</p>
+            </div>
+          </div>
+
+          <label class="image-drop" for="imageInput" id="imageDrop">
+            <input id="imageInput" type="file" accept="image/*" capture="environment" />
+            <img id="imagePreview" alt="" hidden />
+            <span id="imageHint">選照片或拍一張貓的狀態</span>
+          </label>
+
+          <div class="controls compact-controls">
+            <button class="secondary-button" id="analyzeImageButton" type="button" disabled>Analyze image</button>
+            <button class="ghost-button" id="clearImageButton" type="button" disabled>Clear</button>
+          </div>
+        </section>
+
         <aside class="context-panel">
           <div class="panel-header compact">
             <div>

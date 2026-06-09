@@ -16,12 +16,12 @@
               <path d="M17 28h.1M31 28h.1M20 35c2.4 1.8 5.6 1.8 8 0" />
             </svg>
           </div>
-          <div>
-            <h1>CatSense Live</h1>
-            <p>即時家貓聲音意圖判斷</p>
-          </div>
+        <div>
+          <h1>CatSense Live</h1>
+          <p>聽一段貓叫，判斷最可能需求</p>
         </div>
-        <div class="connection-pill" id="connectionPill">未連線</div>
+      </div>
+      <div class="connection-text" id="connectionPill">未連線</div>
       </header>
 
       <section class="workspace">
@@ -42,21 +42,6 @@
             <button class="primary-button" id="startButton" type="button">Start listening</button>
             <button class="secondary-button" id="analyzeButton" type="button" disabled>Analyze now</button>
             <button class="ghost-button" id="stopButton" type="button" disabled>Stop</button>
-          </div>
-
-          <div class="status-grid">
-            <div>
-              <span>Realtime</span>
-              <strong id="realtimeStatus">待命</strong>
-            </div>
-            <div>
-              <span>Auto analyze</span>
-              <strong id="autoStatus">每 6 秒</strong>
-            </div>
-            <div>
-              <span>Model</span>
-              <strong id="modelStatus">檢查中</strong>
-            </div>
           </div>
         </section>
 
@@ -95,17 +80,12 @@
 
           <label>
             最近變化
-            <textarea id="notesInput" rows="4" placeholder="例如：剛吃過、想出門、剛搬家、最近食慾下降"></textarea>
+            <textarea id="notesInput" rows="3" placeholder="例如：剛吃過、想出門、最近食慾下降"></textarea>
           </label>
-
-          <div class="toggle-row">
-            <span>只輸出 JSON</span>
-            <input id="jsonOnlyInput" type="checkbox" checked />
-          </div>
         </aside>
       </section>
 
-      <section class="results">
+      <section class="results" aria-live="polite">
         <article class="result-card main-result">
           <div class="result-topline">
             <span>Likely intent</span>
@@ -118,23 +98,16 @@
             <span id="soundType">sound: unknown</span>
             <span id="confidenceText">confidence: 0%</span>
           </div>
-        </article>
-
-        <article class="result-card">
-          <span>What to check</span>
+          <div class="evidence-row" id="evidenceRow">等待貓叫聲</div>
           <ul id="checkList">
             <li>開始聆聽後會出現檢查項目</li>
           </ul>
-        </article>
-
-        <article class="result-card warning" id="warningCard">
-          <span>Vet warning</span>
-          <strong id="vetWarning">false</strong>
-          <p id="suggestedResponse">結果不取代獸醫診斷。</p>
+          <p class="safety-line" id="suggestedResponse">結果不取代獸醫診斷。</p>
         </article>
       </section>
 
-      <section class="event-log">
+      <details class="event-log">
+        <summary>Debug log</summary>
         <div class="panel-header compact">
           <div>
             <h2>Realtime Log</h2>
@@ -143,7 +116,7 @@
           <button class="ghost-button small" id="clearLogButton" type="button">Clear</button>
         </div>
         <pre id="logOutput"></pre>
-      </section>
+      </details>
     </main>
 
     <script type="module" src="/app.js"></script>

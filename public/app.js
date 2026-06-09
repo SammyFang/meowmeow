@@ -20,19 +20,16 @@ const els = {
   analyzeButton: document.querySelector("#analyzeButton"),
   stopButton: document.querySelector("#stopButton"),
   realtimeStatus: document.querySelector("#realtimeStatus"),
-  autoStatus: document.querySelector("#autoStatus"),
   modelStatus: document.querySelector("#modelStatus"),
   locationInput: document.querySelector("#locationInput"),
   bodyInput: document.querySelector("#bodyInput"),
   notesInput: document.querySelector("#notesInput"),
-  jsonOnlyInput: document.querySelector("#jsonOnlyInput"),
   intentLabel: document.querySelector("#intentLabel"),
   confidenceFill: document.querySelector("#confidenceFill"),
   soundType: document.querySelector("#soundType"),
   confidenceText: document.querySelector("#confidenceText"),
+  evidenceRow: document.querySelector("#evidenceRow"),
   checkList: document.querySelector("#checkList"),
-  warningCard: document.querySelector("#warningCard"),
-  vetWarning: document.querySelector("#vetWarning"),
   suggestedResponse: document.querySelector("#suggestedResponse"),
   lastEvent: document.querySelector("#lastEvent"),
   logOutput: document.querySelector("#logOutput"),
@@ -53,11 +50,10 @@ async function init() {
   drawIdleWaveform();
   try {
     const health = await fetch("/api/health").then(r => r.json());
-    els.modelStatus.textContent = health.model || "gpt-realtime-2";
     if (!health.hasApiKey) {
       state.serverReady = false;
       setConnection("error", "缺 API key");
-      els.realtimeStatus.textContent = "需設定 key";
+      setStatus("需設定 key");
       els.startButton.disabled = true;
       els.startButton.textContent = "Set API key first";
     } else {
@@ -79,7 +75,7 @@ async function startListening() {
     }
     setBusy(true);
     setConnection("", "連線中");
-    els.realtimeStatus.textContent = "要求麥克風";
+    setStatus("要求麥克風");
 
     const mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -101,7 +97,7 @@ async function startListening() {
     dc.addEventListener("open", () => {
       state.connected = true;
       setConnection("connected", "已連線");
-      els.realtimeStatus.textContent = "聆聽中";
+      setStatus("聆聽中");
       els.analyzeButton.disabled = false;
       els.stopButton.disabled = false;
       sendContextMessage();
@@ -115,7 +111,7 @@ async function startListening() {
     });
 
     pc.addEventListener("connectionstatechange", () => {
-      els.realtimeStatus.textContent = pc.connectionState;
+      setStatus(pc.connectionState);
       if (["failed", "disconnected", "closed"].includes(pc.connectionState)) {
         setConnection(pc.connectionState === "failed" ? "error" : "", pc.connectionState);
       }
@@ -124,7 +120,7 @@ async function startListening() {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
-    els.realtimeStatus.textContent = "建立 session";
+    setStatus("建立 session");
     const sdpResponse = await fetch("/api/realtime/session", {
       method: "POST",
       body: offer.sdp,
@@ -147,7 +143,7 @@ async function startListening() {
   } catch (error) {
     log(`ERROR ${error.message}`);
     setConnection("error", "連線失敗");
-    els.realtimeStatus.textContent = error.message;
+    setStatus(error.message);
     await stopListening({ keepMessage: true });
   } finally {
     setBusy(false);
@@ -179,7 +175,7 @@ async function stopListening(options = {}) {
   els.levelText.textContent = "0%";
   if (!options.keepMessage) {
     setConnection("", "未連線");
-    els.realtimeStatus.textContent = "待命";
+    setStatus("待命");
   }
   drawIdleWaveform();
 }
@@ -187,9 +183,8 @@ async function stopListening(options = {}) {
 function requestAnalysis(source) {
   if (!state.dc || state.dc.readyState !== "open") return;
   const context = getContext();
-  const outputMode = context.jsonOnly ? "Return JSON only." : "Return concise JSON followed by one short Traditional Chinese sentence.";
   const instructions = [
-    `${outputMode} Analyze the recent live microphone audio for common house-cat vocal intent.`,
+    "Return JSON only. Analyze the recent live microphone audio for common house-cat vocal intent.",
     "Use the cat context below. If the audio is mostly human speech, background noise, or silence, return unknown with low confidence.",
     `Context: ${JSON.stringify(context)}`
   ].join("\n");
@@ -272,6 +267,7 @@ function maybeRenderResult(text, final = false) {
   els.soundType.textContent = `sound: ${parsed.sound_type || "unknown"}`;
   els.confidenceText.textContent = `confidence: ${normalizedConfidence}%`;
   els.confidenceFill.style.width = `${Math.max(0, Math.min(normalizedConfidence, 100))}%`;
+  els.evidenceRow.textContent = parsed.acoustic_evidence || parsed.notes || "無足夠聲音證據";
 
   const checks = Array.isArray(parsed.what_to_check) && parsed.what_to_check.length
     ? parsed.what_to_check
@@ -283,9 +279,8 @@ function maybeRenderResult(text, final = false) {
   }));
 
   const warning = Boolean(parsed.vet_warning);
-  els.warningCard.classList.toggle("active", warning);
-  els.vetWarning.textContent = String(warning);
   els.suggestedResponse.textContent = parsed.suggested_response || parsed.notes || "結果不取代獸醫診斷。";
+  els.suggestedResponse.classList.toggle("warning", warning);
 }
 
 function extractResponseText(event) {
@@ -400,7 +395,6 @@ function getContext() {
     location: els.locationInput.value,
     body_language: els.bodyInput.value,
     recent_changes: els.notesInput.value.trim(),
-    jsonOnly: els.jsonOnlyInput.checked,
     timestamp: new Date().toISOString()
   };
 }
@@ -420,8 +414,12 @@ function setBusy(isBusy) {
 }
 
 function setConnection(mode, text) {
-  els.connectionPill.className = `connection-pill ${mode || ""}`.trim();
+  els.connectionPill.className = `connection-text ${mode || ""}`.trim();
   els.connectionPill.textContent = text;
+}
+
+function setStatus(text) {
+  if (els.realtimeStatus) els.realtimeStatus.textContent = text;
 }
 
 async function safeJson(response) {

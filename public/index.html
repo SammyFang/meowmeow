@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CatSense Live</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M10 21 7 8l10 7a22 22 0 0 1 14 0l10-7-3 13a18 18 0 1 1-28 0Z" />
+              <path d="M17 28h.1M31 28h.1M20 35c2.4 1.8 5.6 1.8 8 0" />
+            </svg>
+          </div>
+          <div>
+            <h1>CatSense Live</h1>
+            <p>即時家貓聲音意圖判斷</p>
+          </div>
+        </div>
+        <div class="connection-pill" id="connectionPill">未連線</div>
+      </header>
+
+      <section class="workspace">
+        <section class="listen-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Live Mic</h2>
+              <p id="micLabel">等待啟動</p>
+            </div>
+            <div class="meter">
+              <span id="levelText">0%</span>
+            </div>
+          </div>
+
+          <canvas id="waveform" width="920" height="320" aria-label="live audio waveform"></canvas>
+
+          <div class="controls">
+            <button class="primary-button" id="startButton" type="button">Start listening</button>
+            <button class="secondary-button" id="analyzeButton" type="button" disabled>Analyze now</button>
+            <button class="ghost-button" id="stopButton" type="button" disabled>Stop</button>
+          </div>
+
+          <div class="status-grid">
+            <div>
+              <span>Realtime</span>
+              <strong id="realtimeStatus">待命</strong>
+            </div>
+            <div>
+              <span>Auto analyze</span>
+              <strong id="autoStatus">每 6 秒</strong>
+            </div>
+            <div>
+              <span>Model</span>
+              <strong id="modelStatus">檢查中</strong>
+            </div>
+          </div>
+        </section>
+
+        <aside class="context-panel">
+          <div class="panel-header compact">
+            <div>
+              <h2>Context</h2>
+              <p>情境會影響判斷</p>
+            </div>
+          </div>
+
+          <label>
+            貓的位置
+            <select id="locationInput">
+              <option>門口</option>
+              <option>食盆旁</option>
+              <option>水碗旁</option>
+              <option>貓砂盆附近</option>
+              <option>窗邊</option>
+              <option>主人身邊</option>
+              <option>陌生環境</option>
+            </select>
+          </label>
+
+          <label>
+            姿勢 / 尾巴
+            <select id="bodyInput">
+              <option>尾巴直立，靠近人</option>
+              <option>身體放鬆，呼嚕</option>
+              <option>躲藏，耳朵後貼</option>
+              <option>拱背，尾巴蓬</option>
+              <option>來回走動，焦躁</option>
+              <option>正常但一直叫</option>
+            </select>
+          </label>
+
+          <label>
+            最近變化
+            <textarea id="notesInput" rows="4" placeholder="例如：剛吃過、想出門、剛搬家、最近食慾下降"></textarea>
+          </label>
+
+          <div class="toggle-row">
+            <span>只輸出 JSON</span>
+            <input id="jsonOnlyInput" type="checkbox" checked />
+          </div>
+        </aside>
+      </section>
+
+      <section class="results">
+        <article class="result-card main-result">
+          <div class="result-topline">
+            <span>Likely intent</span>
+            <strong id="intentLabel">尚無判斷</strong>
+          </div>
+          <div class="confidence-bar" aria-label="confidence">
+            <span id="confidenceFill"></span>
+          </div>
+          <div class="result-meta">
+            <span id="soundType">sound: unknown</span>
+            <span id="confidenceText">confidence: 0%</span>
+          </div>
+        </article>
+
+        <article class="result-card">
+          <span>What to check</span>
+          <ul id="checkList">
+            <li>開始聆聽後會出現檢查項目</li>
+          </ul>
+        </article>
+
+        <article class="result-card warning" id="warningCard">
+          <span>Vet warning</span>
+          <strong id="vetWarning">false</strong>
+          <p id="suggestedResponse">結果不取代獸醫診斷。</p>
+        </article>
+      </section>
+
+      <section class="event-log">
+        <div class="panel-header compact">
+          <div>
+            <h2>Realtime Log</h2>
+            <p id="lastEvent">尚未收到事件</p>
+          </div>
+          <button class="ghost-button small" id="clearLogButton" type="button">Clear</button>
+        </div>
+        <pre id="logOutput"></pre>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

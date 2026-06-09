@@ -7,10 +7,12 @@ Do not put `OPENAI_API_KEY` in browser code, HTML, CSS, committed files, query s
 Use one of these safe options:
 
 - Local development: create `.env` or `.env.local` in this folder. Both are ignored by git.
-- Production: set `OPENAI_API_KEY` as a server-side secret in the hosting provider.
+- Production on Cloudflare Workers: set `OPENAI_API_KEY` with `wrangler secret put OPENAI_API_KEY`.
 - CI/CD: use GitHub Actions secrets or the hosting platform secret store.
 
 The browser only talks to this app's Node server. The Node server calls OpenAI with `OPENAI_API_KEY` and returns only the SDP answer needed for the WebRTC session.
+
+For the deployed Cloudflare Worker, the browser talks to the Worker. The Worker calls OpenAI with the Cloudflare secret and returns only the SDP answer needed for the WebRTC session.
 
 ## Before pushing
 

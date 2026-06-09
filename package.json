@@ -5,9 +5,16 @@
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "dev": "node server.mjs"
+    "dev": "node server.mjs",
+    "cf:dev": "wrangler dev",
+    "cf:check": "wrangler deploy --dry-run",
+    "cf:deploy": "wrangler deploy",
+    "cf:secret": "wrangler secret put OPENAI_API_KEY"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "wrangler": "4.98.0"
   }
 }

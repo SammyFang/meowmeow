@@ -15,6 +15,29 @@ node server.mjs
 
 Open `http://localhost:4173`.
 
+## Deploy to Cloudflare Workers
+
+Install Wrangler and log in:
+
+```powershell
+npm install
+npx wrangler login
+```
+
+Set the OpenAI key as a Cloudflare secret. Do not put the key in `wrangler.jsonc`, `public/`, or GitHub:
+
+```powershell
+npx wrangler secret put OPENAI_API_KEY
+```
+
+Deploy:
+
+```powershell
+npx wrangler deploy
+```
+
+After deploy, Wrangler prints a public `https://...workers.dev` URL. Use that URL for production browser access.
+
 ## Architecture
 
 - Browser captures microphone audio and creates a WebRTC offer.
@@ -22,6 +45,8 @@ Open `http://localhost:4173`.
 - Server calls OpenAI `POST /v1/realtime/calls` with `OPENAI_API_KEY` and the realtime session config.
 - Browser receives the SDP answer and opens the `oai-events` data channel.
 - The UI requests text-only analysis every 6 seconds and renders the first JSON object it receives.
+
+The Cloudflare deployment uses the same browser flow, but `/api/realtime/session` is handled by `src/worker.js` instead of the local Node server.
 
 ## Safety
 

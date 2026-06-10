@@ -1,3 +1,7 @@
+const AUTO_ANALYZE_MS = 4500;
+const SHORT_SOUND_LEVEL = 8;
+const SHORT_SOUND_COOLDOWN_MS = 2600;
+
 const state = {
   pc: null,
   dc: null,
@@ -8,7 +12,10 @@ const state = {
   analyzeTimer: null,
   connected: false,
   partialText: "",
-  serverReady: false
+  serverReady: false,
+  lastShortSoundAnalyzeAt: 0,
+  responseInProgress: false,
+  pendingShortSound: false
 };
 
 const els = {
@@ -110,7 +117,7 @@ async function startListening() {
       els.stopButton.disabled = false;
       sendContextMessage();
       requestAnalysis("initial");
-      state.analyzeTimer = window.setInterval(() => requestAnalysis("auto"), 6000);
+      state.analyzeTimer = window.setInterval(() => requestAnalysis("auto"), AUTO_ANALYZE_MS);
     });
     dc.addEventListener("message", handleRealtimeMessage);
     dc.addEventListener("close", () => {
@@ -178,6 +185,9 @@ async function stopListening(options = {}) {
   state.audioContext = null;
   state.analyser = null;
   state.connected = false;
+  state.lastShortSoundAnalyzeAt = 0;
+  state.responseInProgress = false;
+  state.pendingShortSound = false;
 
   els.startButton.disabled = false;
   els.analyzeButton.disabled = true;
@@ -193,9 +203,19 @@ async function stopListening(options = {}) {
 
 function requestAnalysis(source) {
   if (!state.dc || state.dc.readyState !== "open") return;
+  if (state.responseInProgress) {
+    if (source === "short-sound") state.pendingShortSound = true;
+    return;
+  }
   const context = getContext();
+  const shortSoundFocus =
+    source === "short-sound"
+      ? "A short sound peak was just detected. Focus on the latest 1-2 seconds first."
+      : "Focus on the latest vocalization in the active listening window.";
   const instructions = [
     "Return JSON only. Analyze the recent live microphone audio for common house-cat vocal intent.",
+    "Kitten vocalizations may be only 1-2 seconds. If one clear short meow, chirp, trill, hiss, or yowl is present, classify it with calibrated confidence rather than waiting for a longer call.",
+    shortSoundFocus,
     "Use the cat context below. If the audio is mostly human speech, background noise, or silence, return unknown with low confidence.",
     `Context: ${JSON.stringify(context)}`
   ].join("\n");
@@ -209,6 +229,7 @@ function requestAnalysis(source) {
       }
     })
   );
+  state.responseInProgress = true;
   log(`client.response.create ${source}`);
 }
 
@@ -260,6 +281,9 @@ function handleRealtimeMessage(message) {
 
   els.lastEvent.textContent = event.type || "event";
   if (event.type) log(event.type);
+  if (event.type === "error") {
+    state.responseInProgress = false;
+  }
 
   const deltas = [
     event.delta,
@@ -280,6 +304,11 @@ function handleRealtimeMessage(message) {
       log(trimForLog(text));
     }
     state.partialText = "";
+    state.responseInProgress = false;
+    if (state.pendingShortSound) {
+      state.pendingShortSound = false;
+      window.setTimeout(() => requestAnalysis("short-sound"), 120);
+    }
   }
 }
 
@@ -475,12 +504,26 @@ function drawLiveWaveform() {
 
     const percent = Math.min(100, Math.round((level / data.length) * 240));
     els.levelText.textContent = `${percent}%`;
-    els.micLabel.textContent = percent > 8 ? "偵測到聲音" : "聆聽中";
+    if (percent >= SHORT_SOUND_LEVEL) {
+      els.micLabel.textContent = "捕捉短叫";
+      maybeAnalyzeShortSound(percent);
+    } else {
+      els.micLabel.textContent = "聆聽中";
+    }
 
     state.animationFrame = window.requestAnimationFrame(frame);
   }
 
   frame();
+}
+
+function maybeAnalyzeShortSound(level) {
+  if (!state.dc || state.dc.readyState !== "open") return;
+  const now = Date.now();
+  if (now - state.lastShortSoundAnalyzeAt < SHORT_SOUND_COOLDOWN_MS) return;
+  state.lastShortSoundAnalyzeAt = now;
+  requestAnalysis("short-sound");
+  log(`short-sound.peak ${level}%`);
 }
 
 function drawIdleWaveform() {
